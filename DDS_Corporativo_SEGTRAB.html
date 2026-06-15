@@ -1,0 +1,170 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SEGTRAB Solutions - DDS Corporativo</title>
+<style>
+body{margin:0;font-family:Segoe UI,Arial;background:#eef2f5}
+header{background:#12395b;color:#fff;padding:25px;text-align:center}
+.container{max-width:1100px;margin:auto;padding:20px}
+.card{background:#fff;border-radius:14px;padding:20px;margin:15px 0;box-shadow:0 2px 10px rgba(0,0,0,.1)}
+input,select{width:100%;padding:10px;margin:8px 0}
+button{background:#12395b;color:#fff;border:none;padding:12px 18px;border-radius:8px;cursor:pointer}
+.hidden{display:none}
+.progress{height:18px;background:#ddd;border-radius:20px;overflow:hidden}
+.bar{height:100%;width:0;background:#12395b}
+table{width:100%;border-collapse:collapse}
+td,th{border:1px solid #ddd;padding:8px;text-align:center}
+.cert{border:6px solid #12395b;padding:30px;text-align:center}
+</style>
+</head>
+<body>
+<header>
+<h1>SEGTRAB SOLUTIONS</h1>
+<p>Sistema Corporativo de DDS - Alcoolismo e Segurança do Trabalho</p>
+</header>
+
+<div class="container">
+
+<div class="card" id="login">
+<h2>Identificação do Trabalhador</h2>
+<input id="nome" placeholder="Nome completo">
+<input id="matricula" placeholder="Matrícula">
+<input id="empresa" placeholder="Empresa/Setor">
+<button onclick="entrar()">Iniciar DDS</button>
+</div>
+
+<div class="card hidden" id="quiz">
+<h2>Avaliação DDS</h2>
+<div class="progress"><div class="bar" id="bar"></div></div>
+
+<div id="perguntas"></div>
+
+<button onclick="corrigir()">Finalizar Avaliação</button>
+</div>
+
+<div class="card hidden" id="resultado"></div>
+
+<div class="card hidden" id="certificado">
+<div class="cert">
+<h1>CERTIFICADO DE PARTICIPAÇÃO</h1>
+<p>Certificamos que</p>
+<h2 id="cnome"></h2>
+<p>Participou do DDS Corporativo sobre Alcoolismo e Segurança do Trabalho.</p>
+<p id="cempresa"></p>
+<p id="cnota"></p>
+<br><br>
+<p>________________________</p>
+<p>Técnico de Segurança do Trabalho</p>
+</div>
+<button onclick="window.print()">Imprimir / Salvar PDF</button>
+</div>
+
+<div class="card hidden" id="painel">
+<h2>Painel Gerencial</h2>
+<p>Média Geral: <span id="media">0</span></p>
+<table>
+<thead><tr><th>Nome</th><th>Matrícula</th><th>Nota</th></tr></thead>
+<tbody id="dados"></tbody>
+</table>
+<canvas id="grafico" width="900" height="300"></canvas>
+</div>
+
+</div>
+
+<script>
+const questoes=[
+["O álcool reduz reflexos?",["Sim","Não"],0],
+["O alcoolismo é uma doença?",["Sim","Não"],0],
+["O álcool aumenta risco de acidentes?",["Sim","Não"],0],
+["É seguro operar máquinas sob efeito de álcool?",["Sim","Não"],1],
+["A segurança depende de todos?",["Sim","Não"],0],
+["O álcool afeta decisões?",["Sim","Não"],0],
+["EPIs eliminam os riscos do álcool?",["Sim","Não"],1],
+["O DDS ajuda na prevenção?",["Sim","Não"],0],
+["Devemos comunicar situações de risco?",["Sim","Não"],0],
+["Trabalhar alcoolizado pode gerar acidentes graves?",["Sim","Não"],0]
+];
+
+let usuario={};
+
+const area=document.getElementById("perguntas");
+questoes.forEach((q,i)=>{
+ let h=`<p><b>${i+1}. ${q[0]}</b></p>`;
+ q[1].forEach((op,j)=>{
+  h+=`<label><input type="radio" name="q${i}" value="${j}"> ${op}</label><br>`;
+ });
+ area.innerHTML+=h+"<hr>";
+});
+
+function entrar(){
+ usuario.nome=nome.value;
+ usuario.matricula=matricula.value;
+ usuario.empresa=empresa.value;
+ if(!usuario.nome) return alert("Preencha o nome.");
+ login.classList.add("hidden");
+ quiz.classList.remove("hidden");
+ document.getElementById("bar").style.width="100%";
+}
+
+function corrigir(){
+ let acertos=0;
+ questoes.forEach((q,i)=>{
+   let r=document.querySelector(`input[name=q${i}]:checked`);
+   if(r && parseInt(r.value)===q[2]) acertos++;
+ });
+
+ let nota=acertos;
+ let texto="Excelente desempenho.";
+ if(nota<8) texto="Bom desempenho. Revise alguns conceitos.";
+ if(nota<5) texto="Necessário reforço no conteúdo.";
+
+ resultado.classList.remove("hidden");
+ resultado.innerHTML=`<h2>Resultado Final</h2>
+ <h3>${nota}/10</h3>
+ <p>${texto}</p>`;
+
+ certificado.classList.remove("hidden");
+ cnome.innerText=usuario.nome;
+ cempresa.innerText="Empresa/Setor: "+usuario.empresa;
+ cnota.innerText="Aproveitamento: "+nota+"/10";
+
+ let banco=JSON.parse(localStorage.getItem("segtrab_dds")||"[]");
+ banco.push({nome:usuario.nome,matricula:usuario.matricula,nota});
+ localStorage.setItem("segtrab_dds",JSON.stringify(banco));
+ painelResultados();
+}
+
+function painelResultados(){
+ painel.classList.remove("hidden");
+ let banco=JSON.parse(localStorage.getItem("segtrab_dds")||"[]");
+ let corpo="";
+ let soma=0;
+
+ banco.forEach(r=>{
+  soma+=r.nota;
+  corpo+=`<tr><td>${r.nome}</td><td>${r.matricula}</td><td>${r.nota}/10</td></tr>`;
+ });
+
+ dados.innerHTML=corpo;
+ media.innerText=(banco.length?(soma/banco.length).toFixed(1):0);
+
+ const c=document.getElementById("grafico");
+ const ctx=c.getContext("2d");
+ ctx.clearRect(0,0,c.width,c.height);
+
+ banco.forEach((r,i)=>{
+   let x=50+i*80;
+   let h=r.nota*20;
+   ctx.fillStyle="#12395b";
+   ctx.fillRect(x,250-h,40,h);
+   ctx.fillText(r.nota,x+10,240-h);
+   ctx.fillText(r.nome.substring(0,6),x,270);
+ });
+}
+painelResultados();
+</script>
+</body>
+</html>
